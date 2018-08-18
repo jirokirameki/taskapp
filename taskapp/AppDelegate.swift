@@ -7,13 +7,15 @@
 //
 
 import UIKit
+import RealmSwift
 import UserNotifications    // 通知用
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterDelegate {
 
     var window: UIWindow?
-
+    let realm = try! Realm()
+    
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplicationLaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
         
@@ -24,6 +26,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
         }
         center.delegate = self;
         
+        // 「ALL」のカテゴリー作成
+        try! realm.write {
+            let allCategory = Category()
+            allCategory.title = "ALL（デフォルト値）"
+            realm.add(allCategory, update: true)
+        }
+    
         return true
     }
     

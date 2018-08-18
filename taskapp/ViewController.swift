@@ -10,23 +10,33 @@ import UIKit
 import RealmSwift
 import UserNotifications
 
-class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSource {
+class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSource, UIPickerViewDelegate, UIPickerViewDataSource {
     @IBOutlet weak var tableView: UITableView!
-    @IBOutlet weak var searchWords: UITextField!
+    @IBOutlet weak var categoryPicker: UIPickerView!
     
     // Realmインスタンスを取得する
     let realm = try! Realm()
+    var allCategories: Results<Category>!
     
     // DB内のタスクが格納されるリスト。
     // 日付近い順\順でソート：降順
     // 以降内容をアップデートするとリスト内は自動的に更新される。
-     var taskArray = try! Realm().objects(Task.self).sorted(byKeyPath: "date", ascending: false)
+    var taskArray = try! Realm().objects(Task.self).sorted(byKeyPath: "date", ascending: false)
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        // Do any additional setup after loading the view, typically from a nib.
+        
         tableView.delegate = self
         tableView.dataSource = self
+        
+        categoryPicker.delegate = self;
+        categoryPicker.dataSource = self;
+        categoryPicker.showsSelectionIndicator = true;
+        
+        allCategories = realm.objects(Category.self)
+        
+        // はじめに表示する項目を指定
+        categoryPicker.selectRow(0, inComponent: 0, animated: true)
     }
 
     override func didReceiveMemoryWarning() {
@@ -48,8 +58,6 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         // Cellに値を設定する.
         let task = taskArray[indexPath.row]
         cell.textLabel?.text = task.title
-        
-//        cell.detailTextLabel?.text = task.category
         
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd HH:mm"
@@ -108,6 +116,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         } else {
             let task = Task()
             task.date = Date()
+            task.category = allCategories[0]
             
             let allTasks = realm.objects(Task.self)
             if allTasks.count != 0 {
@@ -118,19 +127,43 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         }
     }
     
-    // 入力画面から戻ってきた時に TableView を更新させる
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
+        // 入力画面から戻ってきた時に TableView を更新させる
         tableView.reloadData()
+        
+        // categoryPicker を更新させる
+        categoryPicker.reloadAllComponents()
+        categoryPicker.selectRow(0, inComponent: 0, animated: true)
+        
+        // 初期化
+        taskArray = try! Realm().objects(Task.self).sorted(byKeyPath: "date", ascending: false)
     }
     
-    @IBAction func searchButton(_ sender: Any) {
-        taskArray = try! Realm().objects(Task.self).sorted(byKeyPath: "date", ascending: false)
-        if self.searchWords.text! != "" {
-            let predicate = NSPredicate(format: "category CONTAINS %@", self.searchWords.text!)
-            taskArray = taskArray.filter(predicate)
+    // 表示する列数
+    func numberOfComponents(in pickerView: UIPickerView) -> Int {
+        return 1
+    }
+    
+    // アイテム表示個数を返す
+    func pickerView(_ pickerView: UIPickerView, numberOfRowsInComponent component: Int) -> Int {
+        return allCategories.count
+    }
+    
+    func pickerView(_ pickerView: UIPickerView, didSelectRow row: Int, inComponent component: Int) {
+        // 選択時の処理
+        if allCategories[row].title == "ALL（デフォルト値）" {
+            taskArray = try! Realm().objects(Task.self).sorted(byKeyPath: "date", ascending: false)
+        } else {
+    //        let predicate = NSPredicate(format: "category.title CONTAINS %@", self.allCategories[row].title)
+            let predicate = NSPredicate(format: "category == %@", self.allCategories[row])
+            taskArray = try! Realm().objects(Task.self).filter(predicate).sorted(byKeyPath: "date", ascending: false)
         }
         tableView.reloadData()
     }
+    
+    func pickerView(_ pickerView: UIPickerView, titleForRow row: Int, forComponent component: Int) -> String? {
+        // 表示する文字列を返す
+        return allCategories[row].title
+    }
 }
-
